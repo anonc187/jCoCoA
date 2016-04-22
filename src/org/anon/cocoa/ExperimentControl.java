@@ -2,7 +2,7 @@
  * File ExperimentControl.java
  *
  * This file is part of the jCoCoA project 2014.
- * 
+ *
  * Copyright 2014 Anomymous
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,41 +10,33 @@
  * You may obtain a copy of the License at
  *
  *       http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- * 
+ *
  */
 package org.anon.cocoa;
 
-import org.anon.cocoa.agents.AbstractAgent;
-import org.anon.cocoa.agents.AbstractSolverAgent;
-import org.anon.cocoa.agents.OrderedSolverAgent;
-import org.anon.cocoa.costfunctions.CompareCounter;
-import org.anon.cocoa.costfunctions.SemiRandomCostFunction;
+import org.anon.cocoa.constraints.CompareCounter;
 
 /**
  * ExperimentControl
- * 
+ *
  * @author Anomymous
  * @version 0.1
  * @since 4 apr. 2014
- * 
+ *
  */
 public class ExperimentControl {
 
 	public static void ResetExperiment() {
-		AbstractAgent.destroyAgents();
-//		HashMessage.resetCount();
-		AbstractSolverAgent.resetMessageCount();
+		MailMan.reset();
 		CompareCounter.reset();
-		OrderedSolverAgent.maxSequenceID = 0;
-		SemiRandomCostFunction.resetCostMatrices();
 	}
-	
+
 	public static int getNumberEvals() {
 		return CompareCounter.getComparisons();
 	}

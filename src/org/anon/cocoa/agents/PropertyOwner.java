@@ -1,6 +1,6 @@
 /**
  * File PropertyOwner.java
- * 
+ *
  * This file is part of the jCoCoA project.
  *
  * Copyright 2016 Anonymous
@@ -32,9 +32,9 @@ import org.anon.cocoa.exceptions.PropertyNotSetException;
 public interface PropertyOwner {
 
 	public boolean has(String key);
-	
+
 	public Object get(String key) throws PropertyNotSetException;
-	
+
 	public void set(String key, Object val) throws InvalidPropertyException;
-	
+
 }

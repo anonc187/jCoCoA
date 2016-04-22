@@ -1,6 +1,6 @@
 /**
  * File DSASolver.java
- * 
+ *
  * This file is part of the jCoCoA project.
  *
  * Copyright 2014 Anomymous
@@ -19,19 +19,14 @@
  */
 package org.anon.cocoa.solvers;
 
-import java.util.Iterator;
-import java.util.Random;
-import java.util.Vector;
+import java.util.UUID;
 
 import org.anon.cocoa.agents.Agent;
-import org.anon.cocoa.agents.LocalCommunicatingAgent;
-import org.anon.cocoa.costfunctions.CostFunction;
-import org.anon.cocoa.exceptions.InvalidValueException;
-import org.anon.cocoa.exceptions.VariableNotSetException;
 import org.anon.cocoa.messages.HashMessage;
 import org.anon.cocoa.messages.Message;
-import org.anon.cocoa.problemcontexts.LocalProblemContext;
-import org.anon.cocoa.variables.IntegerVariable;
+import org.anon.cocoa.variables.AssignmentMap;
+import org.anon.cocoa.variables.DiscreteVariable;
+import org.anon.cocoa.variables.RandomAccessVector;
 
 /**
  * DSASolver
@@ -41,89 +36,78 @@ import org.anon.cocoa.variables.IntegerVariable;
  * @since 11 dec. 2014
  *
  */
-public class DSASolver implements IterativeSolver {
+public class DSASolver<V> extends AbstractSolver<DiscreteVariable<V>, V> implements IterativeSolver {
 
 	public static final double CHANGE_TO_EQUAL_PROB = 0.5;
-
-	public static final double CHANGE_TO_IMPROVE_PROB = 1;
-
+	public static final double CHANGE_TO_IMPROVE_PROB = 0.5;
 	public static final String UPDATE_VALUE = "DSASolver:Value";
+	public static final String KEY_VARID = "varID";
+	public static final String KEY_VARVALUE = "value";
 
-	private volatile LocalProblemContext<Integer> context;
-
-	private CostFunction costfun;
-
-	private IntegerVariable myVar;
-
-	private LocalCommunicatingAgent parent;
+	private AssignmentMap<V> context;
 
 	/**
 	 * @param dsaAgent
 	 * @param costfun
 	 */
-	public DSASolver(LocalCommunicatingAgent parent, CostFunction costfun) {
-		this.parent = parent;
-		this.costfun = costfun;
-		this.myVar = (IntegerVariable) this.parent.getVariable();
-		this.context = new LocalProblemContext<Integer>(parent);
+	public DSASolver(Agent<DiscreteVariable<V>, V> agent) {
+		super(agent);
+		this.context = new AssignmentMap<>();
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.anon.cocoa.solvers.Solver#init()
 	 */
 	@Override
 	public synchronized void init() {
-		//this.context = new LocalProblemContext<Integer>(parent);
-		updateMyValue(myVar.getRandomValue());
+		this.updateMyValue(this.myVariable.getRandomValue());
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.anon.cocoa.solvers.Solver#push(org.anon.cocoa.messages.Message)
 	 */
 	@Override
 	public synchronized void push(Message m) {
-		if (m.getType().equals(DSASolver.UPDATE_VALUE))
-			this.updateContext(m);
+		if (m.getType().equals(DSASolver.UPDATE_VALUE)) {
+			UUID varId = m.getUUID(DSASolver.KEY_VARID);
+
+			@SuppressWarnings("unchecked")
+			V newValue = (V) m.getInteger(DSASolver.KEY_VARVALUE);
+
+			this.context.put(varId, newValue);
+		}
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.anon.cocoa.solvers.Solver#reset()
 	 */
 	@Override
 	public void reset() {
-		// TODO Auto-generated method stub
+		this.context = new AssignmentMap<>();
+		this.myVariable.clear();
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	@Override
 	public synchronized void tick() {
 		double bestCost = Double.MAX_VALUE;
-		Vector<Integer> bestAssignment = new Vector<Integer>();
 
-		Iterator<Integer> iter = this.myVar.iterator();
+		RandomAccessVector<V> bestAssignment = new RandomAccessVector<>();
+		this.context.setAssignment(this.myVariable, this.myVariable.getValue());
+		double oldCost = this.parent.getLocalCostIf(this.context);
 
-		if (this.myVar.isSet()) {
-			try {
-				context.setValue(this.myVar.getValue());
-			} catch (VariableNotSetException e) {
-				throw new RuntimeException(e);
-			}
-		}
-		double oldCost = this.costfun.evaluate(context);
+		for (V value : this.myVariable) {
+			this.context.setAssignment(this.myVariable, value);
 
-		while (iter.hasNext()) {
-			Integer iterAssignment = iter.next();
-			context.setValue(iterAssignment);
-
-			double localCost = costfun.evaluate(context);
+			double localCost = this.parent.getLocalCostIf(this.context);
 
 			if (localCost < bestCost) {
 				bestCost = localCost;
@@ -131,65 +115,41 @@ public class DSASolver implements IterativeSolver {
 			}
 
 			if (localCost <= bestCost) {
-				bestAssignment.add(iterAssignment);
+				bestAssignment.add(value);
 			}
 		}
 
-		if (bestCost > oldCost)
+		if (bestCost > oldCost) {
 			return;
+		}
 
-		if (bestCost == oldCost
-				&& Math.random() > DSASolver.CHANGE_TO_EQUAL_PROB)
+		if (bestCost == oldCost && Math.random() > DSASolver.CHANGE_TO_EQUAL_PROB) {
 			return;
+		}
 
-		if (bestCost < oldCost
-				&& Math.random() > DSASolver.CHANGE_TO_IMPROVE_PROB)
+		if (bestCost < oldCost && Math.random() > DSASolver.CHANGE_TO_IMPROVE_PROB) {
 			return;
+		}
 
 		// Chose any of the "best" assignments
-		Integer assign;
-		if (bestAssignment.size() > 1) {
-			int i = (new Random()).nextInt(bestAssignment.size());
-			assign = bestAssignment.elementAt(i);
-		} else {
-			assign = bestAssignment.elementAt(0);
-		}
+		V assign = bestAssignment.randomElement();
 
-		try {
-			if (assign != this.myVar.getValue()) {
-				updateMyValue(assign);
-			}
-		} catch (VariableNotSetException e) {
-			throw new RuntimeException(e);
+		if (assign != this.myVariable.getValue()) {
+			this.updateMyValue(assign);
 		}
-	}
-
-	/**
-	 * @param m
-	 */
-	private void updateContext(Message m) {
-		LocalCommunicatingAgent neighbor = (LocalCommunicatingAgent) m
-				.getContent("agent");
-		Integer newValue = (Integer) m.getContent("value");
-		this.context.setValue(neighbor, newValue);
 	}
 
 	/**
 	 * @param assign
 	 */
-	private void updateMyValue(Integer assign) {
-		try {
-			this.myVar.setValue(assign);
-		} catch (InvalidValueException e) {
-			throw new RuntimeException(e);
-		}
+	private void updateMyValue(V assign) {
+		this.myVariable.setValue(assign);
 
 		HashMessage nextMessage = new HashMessage(DSASolver.UPDATE_VALUE);
-		nextMessage.addContent("agent", this.parent);
-		nextMessage.addContent("value", assign);
+		nextMessage.put(DSASolver.KEY_VARID, this.myVariable.getID());
+		nextMessage.put(DSASolver.KEY_VARVALUE, assign);
 
-		for (Agent neighbor : this.parent.getNeighborhood())
-			neighbor.push(nextMessage.clone());
+		this.sendToNeighbors(nextMessage);
 	}
 
 }

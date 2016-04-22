@@ -1,6 +1,6 @@
 /**
  * File InvalidPropertyException.java
- * 
+ *
  * This file is part of the jCoCoA project.
  *
  * Copyright 2015 Anonymous
@@ -30,12 +30,12 @@ package org.anon.cocoa.exceptions;
 public class InvalidPropertyException extends Exception {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 6343963390990723752L;
 
 	public InvalidPropertyException(String msg) {
 		super(msg);
 	}
-	
+
 }

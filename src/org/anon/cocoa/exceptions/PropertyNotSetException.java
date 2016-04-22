@@ -1,6 +1,6 @@
 /**
  * File PropertyNotSetException.java
- * 
+ *
  * This file is part of the jCoCoA project.
  *
  * Copyright 2015 Anonymous
@@ -30,12 +30,12 @@ package org.anon.cocoa.exceptions;
 public class PropertyNotSetException extends Exception {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = -8721911949902456457L;
 
 	public PropertyNotSetException(String key) {
 		super("Property " + key + " does not exist");
 	}
-	
+
 }

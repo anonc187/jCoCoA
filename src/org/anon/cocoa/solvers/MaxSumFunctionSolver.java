@@ -1,6 +1,6 @@
 /**
  * File MaxSumFunctionSolver.java
- * 
+ *
  * This file is part of the jCoCoA project.
  *
  * Copyright 2016 Anonymous
@@ -21,14 +21,15 @@ package org.anon.cocoa.solvers;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
-import org.anon.cocoa.agents.Agent;
-import org.anon.cocoa.agents.LocalCommunicatingAgent;
-import org.anon.cocoa.costfunctions.CostFunction;
+import org.anon.cocoa.MailMan;
+import org.anon.cocoa.agents.ConstraintAgent;
 import org.anon.cocoa.exceptions.InvalidValueException;
 import org.anon.cocoa.messages.HashMessage;
 import org.anon.cocoa.messages.Message;
-import org.anon.cocoa.problemcontexts.LocalProblemContext;
+import org.anon.cocoa.variables.AssignmentMap;
+import org.anon.cocoa.variables.CostMap;
 import org.anon.cocoa.variables.IntegerVariable;
 
 /**
@@ -38,22 +39,21 @@ import org.anon.cocoa.variables.IntegerVariable;
  * @version 0.1
  * @since 22 jan. 2016
  */
-public class MaxSumFunctionSolver implements IterativeSolver, BiPartiteGraphSolver {
+public class MaxSumFunctionSolver extends AbstractSolver<IntegerVariable, Integer>
+		implements IterativeSolver, BiPartiteGraphSolver {
 
-	private final LocalCommunicatingAgent parent;
-	private final CostFunction costfun;
+	protected final ConstraintAgent<IntegerVariable, Integer> constraintAgent;
+	protected Map<UUID, CostMap<Integer>> receivedCosts;
 
-	private Map<Agent, Map<Integer, Double>> receivedCosts;
-
-	public MaxSumFunctionSolver(LocalCommunicatingAgent parent, CostFunction costfun) {
-		this.parent = parent;
-		this.costfun = costfun;
-		this.receivedCosts = new HashMap<Agent, Map<Integer, Double>>();
+	public MaxSumFunctionSolver(ConstraintAgent<IntegerVariable, Integer> agent) {
+		super(agent);
+		this.constraintAgent = agent;
+		this.receivedCosts = new HashMap<>();
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.anon.cocoa.solvers.Solver#init()
 	 */
 	@Override
@@ -63,20 +63,20 @@ public class MaxSumFunctionSolver implements IterativeSolver, BiPartiteGraphSolv
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.anon.cocoa.solvers.Solver#push(org.anon.cocoa.messages.Message)
 	 */
-	@SuppressWarnings("unchecked")
 	@Override
 	public synchronized void push(Message m) {
-		Agent neighbor = (Agent) m.getContent("source");
-		Map<Integer, Double> costMap = (Map<Integer, Double>) m.getContent("costMap");
+		UUID neighbor = m.getUUID("source");
+		@SuppressWarnings("unchecked")
+		CostMap<Integer> costMap = (CostMap<Integer>) m.getMap("costMap");
 		this.receivedCosts.put(neighbor, costMap);
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see org.anon.cocoa.solvers.Solver#reset()
 	 */
 	@Override
@@ -85,70 +85,72 @@ public class MaxSumFunctionSolver implements IterativeSolver, BiPartiteGraphSolv
 	}
 
 	/*
-	 * A message sent from a function-node f to a variable-node x in iteration i
-	 * includes for each possible value d \in Dx the minimal cost of any
-	 * combination of assignments to the variables involved in f apart from x
-	 * and the assignment of value d to variable x.
-	 * 
+	 * A message sent from a function-node f to a variable-node x in iteration i includes for each possible value d \in
+	 * Dx the minimal cost of any combination of assignments to the variables involved in f apart from x and the
+	 * assignment of value d to variable x.
+	 *
 	 * @see org.anon.cocoa.solvers.IterativeSolver#tick()
 	 */
 	@Override
 	public synchronized void tick() {
-		// Target represents variable node x
-
 		// Only works for binary constraints
-		assert (this.parent.getNeighborhood().size() == 2);
+		assert (super.numNeighbors() == 2);
 
-		for (Agent target : this.parent.getNeighborhood()) {
-			// For each target I create a problem context with MY parent as
-			// owner, because that is what the cost function will look for
-			LocalProblemContext<Integer> pc = new LocalProblemContext<Integer>(null);
-
-			// For all values of variable
-			Map<Integer, Double> costMap = new HashMap<Integer, Double>();
-			IntegerVariable targetVar = (IntegerVariable) target.getVariable();
-
-			for (Integer value : targetVar) {
-				pc.setValue(target, value);
-
-				double minCost = Double.MAX_VALUE;
-				// Now we know there is only one other neighbor, so iterate for
-				// him
-				for (Agent other : this.parent.getNeighborhood()) {
-					if (other == target)
-						continue;
-
-					if (minCost < Double.MAX_VALUE)
-						throw new InvalidValueException(
-								"The min cost could not be lowered already, more than one agent in constraint?");
-
-					IntegerVariable otherVar = (IntegerVariable) other.getVariable();
-					for (Integer val2 : otherVar) {
-						pc.setValue(other, val2);
-						double cost = this.costfun.evaluateFull(pc);
-						
-						if (this.receivedCosts.containsKey(other) && this.receivedCosts.get(other).containsKey(val2))
-							cost += this.receivedCosts.get(other).get(val2);
-						
-						if (cost < minCost)
-							minCost = cost;
-					}
-				}
-
-				costMap.put(value, minCost);
-			}
-			
-			Message msg = new HashMessage("FUN2VAR");
-			msg.addContent("source", this.parent);
-			msg.addContent("costMap", costMap);
-			
-			target.push(msg);
+		for (UUID target : this.parent.getConstraintIds()) {
+			Message f2v = this.fun2varmessage(target);
+			MailMan.sendMessage(target, f2v);
 		}
 
 		this.receivedCosts.clear();
 	}
 
-	/* (non-Javadoc)
+	protected Message fun2varmessage(UUID target) {
+		AssignmentMap<Integer> temp = new AssignmentMap<>();
+
+		// For all values of variable
+		CostMap<Integer> costMap = new CostMap<>();
+		for (Integer value : this.constraintAgent.getVariable(target)) {
+			temp.put(target, value);
+
+			double minCost = Double.MAX_VALUE;
+			// Now we know there is only one other neighbor, so iterate for him
+			for (UUID other : this.parent.getConstraintIds()) {
+				if (other == target) {
+					continue;
+				}
+
+				if (minCost < Double.MAX_VALUE) {
+					throw new InvalidValueException(
+							"The min cost could not be lowered already, more than one agent in constraint?");
+				}
+
+				for (Integer val2 : this.constraintAgent.getVariable(other)) {
+					temp.put(other, val2);
+					double cost = this.parent.getLocalCostIf(temp);
+
+					if (this.receivedCosts.containsKey(other) && this.receivedCosts.get(other).containsKey(val2)) {
+						cost += this.receivedCosts.get(other).get(val2);
+					}
+
+					if (cost < minCost) {
+						minCost = cost;
+					}
+				}
+			}
+
+			costMap.put(value, minCost);
+		}
+
+		Message msg = new HashMessage("FUN2VAR");
+		msg.put("source", this.constraintAgent.getID());
+		msg.put("costMap", costMap);
+
+		return msg;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 *
 	 * @see org.anon.cocoa.solvers.BiPartiteGraphSolver#getCounterPart()
 	 */
 	@Override

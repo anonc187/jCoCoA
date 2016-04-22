@@ -1,6 +1,6 @@
 /**
  * File BiPartiteGraphSolver.java
- * 
+ *
  * This file is part of the jCoCoA project.
  *
  * Copyright 2016 Anonymous
@@ -29,5 +29,5 @@ package org.anon.cocoa.solvers;
 public interface BiPartiteGraphSolver {
 
 	public Class<? extends BiPartiteGraphSolver> getCounterPart();
-	
+
 }
