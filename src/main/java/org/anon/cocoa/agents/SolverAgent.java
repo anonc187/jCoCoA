@@ -9,7 +9,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *       http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,75 +37,102 @@ import org.anon.cocoa.variables.Variable;
  */
 public class SolverAgent<T extends Variable<V>, V> extends AbstractAgent<T, V> implements IterativeSolver {
 
-	private SolverRunner mySolver;
+    private SolverRunner mySolver;
 
-	/**
-	 * @param name
-	 * @param var
-	 */
-	public SolverAgent(T var, String name) {
-		super(var, name);
-	}
+    /**
+     * @param name
+     * @param var
+     */
+    public SolverAgent(T var, String name) {
+        super(var, name);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see org.anon.cocoa.Agent#init()
-	 */
-	@Override
-	public final synchronized void init() {
-		this.mySolver.startThread();
-		this.mySolver.init();
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.anon.cocoa.Agent#init()
+     */
+    @Override
+    public final synchronized void init() {
+        this.mySolver.startThread();
+        this.mySolver.init();
+    }
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see org.anon.cocoa.Agent#push(org.anon.cocoa.Message)
-	 */
-	@Override
-	public final synchronized void push(Message m) {
-		this.mySolver.push(m);
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.anon.cocoa.Agent#push(org.anon.cocoa.Message)
+     */
+    @Override
+    public final synchronized void push(Message m) {
+        this.mySolver.push(m);
+    }
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see org.anon.cocoa.solvers.Solver#tick()
-	 */
-	@Override
-	public void tick() {
-		this.mySolver.tick();
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.anon.cocoa.solvers.Solver#tick()
+     */
+    @Override
+    public void tick() {
+        this.mySolver.tick();
+    }
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see org.anon.cocoa.Agent#reset()
-	 */
-	@Override
-	public void reset() {
-		super.reset();
-		this.mySolver.reset();
-	}
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.anon.cocoa.Agent#reset()
+     */
+    @Override
+    public void reset() {
+        super.reset();
+        this.mySolver.reset();
+    }
 
-	public final void setSolver(Solver solver) {
-		this.mySolver = new SolverRunner(solver);
-	}
+    /**
+     * Updates the solver of the Agent. If a solver was already running, it will try to stop that running solver and
+     * update it with the new one. Note that the {@link Solver#init()} function is not called on the solver during this
+     * process.
+     *
+     * @param solver The new solver to be used by this agent
+     */
+    public final void setSolver(Solver solver) {
+        if (this.mySolver != null && this.mySolver.started()) {
+            // If a solver was started, clean it up nicely first
+            if (!this.mySolver.emptyQueue()) {
+                try {
+                    System.out.println("Warning queue is not empty of old solver!");
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            this.mySolver.stopThread();
 
-	public final void setSolver(Solver solver, boolean asynchronous) {
-		if (asynchronous) {
-			this.mySolver = new SolverRunner(solver);
-		} else {
-			// System.err.println("Warning: You are using a synchronous solver!");
-			// this.mySolver = solver;
-			throw new RuntimeException("Playtime is over");
-		}
-	}
+            this.mySolver = new SolverRunner(solver);
 
-	@Override
-	public boolean isFinished() {
-		return this.mySolver.emptyQueue();
-	}
+            // And then start it again
+            this.mySolver.startThread();
+        } else {
+            // If not, just set it
+            this.mySolver = new SolverRunner(solver);
+        }
+    }
+
+    @Deprecated
+    public final void setSolver(Solver solver, boolean asynchronous) {
+        if (asynchronous) {
+            this.mySolver = new SolverRunner(solver);
+        } else {
+            // System.err.println("Warning: You are using a synchronous solver!");
+            // this.mySolver = solver;
+            throw new RuntimeException("Playtime is over");
+        }
+    }
+
+    @Override
+    public boolean isFinished() {
+        return this.mySolver.emptyQueue();
+    }
 
 }
