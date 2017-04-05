@@ -22,12 +22,6 @@ package org.anon.cocoa.constraints;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.anon.cocoa.constraints.CostMatrixConstraint;
-import org.anon.cocoa.constraints.InequalityConstraint;
-import org.anon.cocoa.constraints.PreferentialEqualityConstraint;
-import org.anon.cocoa.constraints.RandomConstraint;
-import org.anon.cocoa.constraints.SemiRandomConstraint;
-import org.anon.cocoa.constraints.SymmetricRandomConstraint;
 import org.anon.cocoa.exceptions.CostMatrixRangeException;
 import org.anon.cocoa.exceptions.InvalidDomainException;
 import org.anon.cocoa.exceptions.VariableNotSetException;
@@ -42,7 +36,6 @@ import org.anon.cocoa.variables.IntegerVariable;
  * @version 0.1
  * @since 4 mrt. 2016
  */
-@SuppressWarnings("static-method")
 public class CostMatrixConstraintTest {
 
     @Test
@@ -225,7 +218,10 @@ public class CostMatrixConstraintTest {
             pref2[i] = Math.random();
         }
 
-        PreferentialEqualityConstraint<Integer> ic = new PreferentialEqualityConstraint<>(var1, var2, pref1, pref2,
+        PreferentialEqualityConstraint<Integer> ic = new PreferentialEqualityConstraint<>(var1,
+                var2,
+                pref1,
+                pref2,
                 ineqCost);
 
         for (Integer v1 : var1) {

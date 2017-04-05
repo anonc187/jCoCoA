@@ -25,7 +25,6 @@ import java.util.UUID;
 import org.junit.Assert;
 import org.junit.Test;
 
-import org.anon.cocoa.constraints.RandomConstraint;
 import org.anon.cocoa.exceptions.VariableNotInvolvedException;
 import org.anon.cocoa.exceptions.VariableNotSetException;
 import org.anon.cocoa.variables.AssignmentMap;

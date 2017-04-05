@@ -37,15 +37,18 @@ import org.anon.cocoa.variables.Variable;
  */
 public class MultiSolverAgent<T extends Variable<V>, V> extends AbstractAgent<T, V> implements IterativeSolver {
 
-    private SolverRunner initSolver;
-    private SolverRunner iterativeSolver;
+    private Solver initSolver;
+    private IterativeSolver iterativeSolver;
+
+    private final boolean synchronous;
 
     /**
      * @param name
      * @param var
      */
-    public MultiSolverAgent(T var, String name) {
+    public MultiSolverAgent(final T var, final String name, final boolean synchronous) {
         super(var, name);
+        this.synchronous = true; // synchronous;
     }
 
     /*
@@ -70,12 +73,16 @@ public class MultiSolverAgent<T extends Variable<V>, V> extends AbstractAgent<T,
      *
      */
     private void startThread() {
+        if (this.synchronous) {
+            return;
+        }
+
         // Start the runner threads
         if (this.initSolver != null) {
-            this.initSolver.startThread();
+            ((SolverRunner) this.initSolver).startThread();
         }
         if (this.iterativeSolver != null) {
-            this.iterativeSolver.startThread();
+            ((SolverRunner) this.iterativeSolver).startThread();
         }
     }
 
@@ -85,7 +92,7 @@ public class MultiSolverAgent<T extends Variable<V>, V> extends AbstractAgent<T,
      * @see org.anon.cocoa.Agent#push(org.anon.cocoa.Message)
      */
     @Override
-    public final synchronized void push(Message m) {
+    public final synchronized void push(final Message m) {
         if (this.initSolver != null) {
             this.initSolver.push(m);
         }
@@ -124,22 +131,27 @@ public class MultiSolverAgent<T extends Variable<V>, V> extends AbstractAgent<T,
         }
     }
 
-    public final void setInitSolver(Solver solver) {
+    public final void setInitSolver(final Solver solver) {
         if (solver == null) {
             this.initSolver = null;
+        } else if (this.synchronous) {
+            this.initSolver = solver;
         } else {
             this.initSolver = new SolverRunner(solver);
         }
     }
 
-    public final void setIterativeSolver(IterativeSolver solver) {
+    public final void setIterativeSolver(final IterativeSolver solver) {
         if (solver == null) {
             this.iterativeSolver = null;
+        } else if (this.synchronous) {
+            this.iterativeSolver = solver;
+        } else {
+            this.iterativeSolver = new SolverRunner(solver);
         }
-        this.iterativeSolver = new SolverRunner(solver);
     }
 
-    public final void setSolver(Solver solver) {
+    public final void setSolver(final Solver solver) {
         if (solver instanceof IterativeSolver) {
             this.setIterativeSolver((IterativeSolver) solver);
         } else {
@@ -147,9 +159,9 @@ public class MultiSolverAgent<T extends Variable<V>, V> extends AbstractAgent<T,
         }
     }
 
-    @Override
-    public boolean isFinished() {
-        return this.initSolver.emptyQueue() && this.iterativeSolver.emptyQueue();
-    }
+    // @Override
+    // public boolean isFinished() {
+    // return this.initSolver.emptyQueue() && this.iterativeSolver.emptyQueue();
+    // }
 
 }

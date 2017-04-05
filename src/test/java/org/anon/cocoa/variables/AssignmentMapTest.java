@@ -9,10 +9,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.anon.cocoa.variables.AssignmentMap;
-import org.anon.cocoa.variables.IntegerVariable;
-import org.anon.cocoa.variables.Variable;
-
 /**
  * AssignmentMapTest
  *
