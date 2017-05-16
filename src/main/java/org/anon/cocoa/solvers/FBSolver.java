@@ -38,6 +38,7 @@ import org.anon.cocoa.variables.DiscreteVariable;
  * @since 19 mrt. 2014
  *
  */
+@Deprecated
 public class FBSolver<V> implements Solver {
 
     public static final String CPA_MSG = "FBSolver:CPA_MSG";
