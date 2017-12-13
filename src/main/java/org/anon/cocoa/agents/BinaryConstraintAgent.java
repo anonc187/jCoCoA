@@ -292,4 +292,14 @@ public class BinaryConstraintAgent<T extends Variable<V>, V> extends AbstractPro
         throw new UnsupportedOperationException("Cannot get Constraints from ConstraintAgent");
     }
 
+    /*
+     * (non-Javadoc)
+     *
+     * @see org.anon.cocoa.agents.Agent#isFinished()
+     */
+    @Override
+    public boolean isFinished() {
+        return this.mySolver.emptyQueue();
+    }
+
 }
